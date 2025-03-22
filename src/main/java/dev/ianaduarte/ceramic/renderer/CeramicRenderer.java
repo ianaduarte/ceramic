@@ -12,7 +12,9 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -38,10 +40,19 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 	
 	@Override
 	public void render(S renderState, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
-		this.render(renderState, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true), poseStack, bufferSource, packedLight);
+		poseStack.pushPose();
+			float g = renderState instanceof LivingEntityRenderState lrs? lrs.scale : 1;
+			poseStack.scale(g, g, g);
+			this.setupRotations(renderState, poseStack);
+			poseStack.scale(-1, -1, 1);
+			this.scale(renderState, poseStack);
+			poseStack.translate(0.0F, -1.501F, 0.0F);
+			this.renderLayers(renderState, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true), poseStack, bufferSource, packedLight);
+		poseStack.popPose();
+		this.renderExtras(renderState, poseStack, bufferSource, packedLight);
 	}
 	
-	public void render(S entity, float tickDelta, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+	public void renderLayers(S entity, float tickDelta, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
 		for(var layer : this.renderLayers) {
 			layer.render(
 				entity,
@@ -50,18 +61,32 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 			);
 		}
 	}
-	protected void setupRotations(E entity, PoseStack poseStack, float tickDelta, float entityYaw, float entityScale) {
-		if(!entity.hasPose(Pose.SLEEPING)) poseStack.mulPose(Axis.YP.rotationDegrees(180 - entityYaw));
-		if(entity instanceof LivingEntity livingEntity) {
-			//if(livingEntity.isFullyFrozen()) entityYaw += Mth.cos(entity.tickCount * 3.25f) * 23.9f;
-			if(livingEntity.deathTime > 0) {
-				float f = (livingEntity.deathTime + tickDelta - 1) / 20 * 1.6f;
-				f = Mth.sqrt(f);
-				if(f > 1) f = 1;
+	
+	protected void scale(S renderState, PoseStack poseStack) {}
+	protected void setupRotations(S renderState, PoseStack poseStack) {
+		if(renderState instanceof LivingEntityRenderState lrs) this.setupRotations(renderState, poseStack, lrs.bodyRot, lrs.scale, 90);
+	}
+	protected void setupRotations(S renderState, PoseStack poseStack, float bodyRot, float scale, float flipDeg) {
+		if(renderState instanceof LivingEntityRenderState lrs) {
+			if(lrs.isFullyFrozen) bodyRot += (float)(Math.cos(Mth.floor(renderState.ageInTicks) * 3.25F) * Math.PI * 0.4F);
+			if(!lrs.hasPose(Pose.SLEEPING)) poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - bodyRot));
+			
+			if(lrs.deathTime > 0) {
+				float f = Mth.sqrt((lrs.deathTime - 1f) / 20f * 1.6f);
+				if(f > 1.0F) f = 1.0F;
 				
-				poseStack.mulPose(Axis.ZP.rotationDegrees(f * 90));
-			} else if(isEntityUpsideDown(entity)) {
-				poseStack.translate(0.0F, (entity.getBbHeight() + 0.1F) / entityScale, 0.0F);
+				poseStack.mulPose(Axis.ZP.rotationDegrees(f * flipDeg));
+			} else if(lrs.isAutoSpinAttack) {
+				poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F - lrs.xRot));
+				poseStack.mulPose(Axis.YP.rotationDegrees(renderState.ageInTicks * -75.0F));
+			} else if (lrs.hasPose(Pose.SLEEPING)) {
+				Direction direction = lrs.bedOrientation;
+				float g = direction != null ? Direction.getYRot(direction) : bodyRot;
+				poseStack.mulPose(Axis.YP.rotationDegrees(g));
+				poseStack.mulPose(Axis.ZP.rotationDegrees(flipDeg));
+				poseStack.mulPose(Axis.YP.rotationDegrees(270.0F));
+			} else if (lrs.isUpsideDown) {
+				poseStack.translate(0.0F, (renderState.boundingBoxHeight + 0.1F) / scale, 0.0F);
 				poseStack.mulPose(Axis.ZP.rotationDegrees(180.0F));
 			}
 		}
@@ -69,17 +94,6 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 	
 	final public void renderExtras(S renderState, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
 		super.render(renderState, poseStack, bufferSource, packedLight);
-	}
-	
-	protected static <E extends Entity> boolean isEntityUpsideDown(E entity) {
-		if(entity instanceof Player || entity.hasCustomName()) {
-			String string = ChatFormatting.stripFormatting(entity.getName().getString());
-			
-			if("Dinnerbone".equals(string) || "Grumm".equals(string)) {
-				return !(entity instanceof Player) || ((Player)entity).isModelPartShown(PlayerModelPart.CAPE);
-			}
-		}
-		return false;
 	}
 	
 	final protected int getSkyLightLevel(E entity, BlockPos pos) {
@@ -111,8 +125,5 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 			if(leashHolder != null) return cameraFrustum.isVisible(entity.getBoundingBox());
 		}
 		return false;
-	}
-	final public void render(S entity, float entityYaw, float tickDelta, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
-		this.render(entity, tickDelta, poseStack, bufferSource, packedLight);
 	}
 }
