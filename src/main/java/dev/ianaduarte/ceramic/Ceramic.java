@@ -21,6 +21,5 @@ public class Ceramic implements ClientModInitializer {
 	
 	@Override
 	public void onInitializeClient() {
-		ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new CeramicModelLayers());
 	}
 }

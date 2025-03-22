@@ -5,7 +5,8 @@
 	"mixins": [
 	],
 	"client": [
-		"OverrideRenderers"
+		"OverrideRenderers",
+		"PreloadModels"
 	],
 	"injectors": {
 		"defaultRequire": 1
