@@ -6,6 +6,7 @@ import com.mojang.math.Axis;
 import dev.ianaduarte.ceramic.layers.CeramicLayerParent;
 import dev.ianaduarte.ceramic.layers.CeramicRenderLayer;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -34,6 +35,11 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 	}
 	
 	public abstract ResourceLocation getTextureLocation(S entity);
+	
+	@Override
+	public void render(S renderState, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+		this.render(renderState, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true), poseStack, bufferSource, packedLight);
+	}
 	
 	public void render(S entity, float tickDelta, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
 		for(var layer : this.renderLayers) {
