@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "dev.ianaduarte.ceramic.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+	],
+	"client": [
+		"OverrideRenderers"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

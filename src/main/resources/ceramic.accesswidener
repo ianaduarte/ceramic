@@ -1,0 +1,3 @@
+accessWidener v2 named
+accessible method net/minecraft/client/renderer/entity/EntityRenderer renderLeash (Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/renderer/entity/state/EntityRenderState$LeashState;)V
+accessible method net/minecraft/client/renderer/entity/EntityRenderer getBoundingBoxForCulling (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/phys/AABB;
