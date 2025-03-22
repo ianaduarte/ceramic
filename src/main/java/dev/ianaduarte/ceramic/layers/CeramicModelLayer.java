@@ -16,6 +16,7 @@ public abstract class CeramicModelLayer<S extends EntityRenderState, R extends C
 	
 	protected CeramicModelLayer(R renderer, Function<ResourceLocation, RenderType> renderType, CeramicModel model) {
 		super(renderer, renderType);
+		this.model = model;
 	}
 	public final CeramicModel getModel() {
 		return model;
