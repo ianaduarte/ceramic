@@ -11,29 +11,38 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Leashable;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelPart;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.AbstractSkullBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
 
 import java.util.List;
 
 public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderState> extends EntityRenderer<E, S> implements CeramicLayerParent<S> {
 	protected final List<CeramicRenderLayer<S>> renderLayers;
+	protected final ItemModelResolver itemModelResolver;
 	
 	protected CeramicRenderer(EntityRendererProvider.Context context) {
 		super(context);
 		this.renderLayers = Lists.newArrayList();
+		this.itemModelResolver = context.getItemModelResolver();
 	}
 	
 	public abstract ResourceLocation getTextureLocation(S entity);
@@ -44,12 +53,106 @@ public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderSt
 			float g = renderState instanceof LivingEntityRenderState lrs? lrs.scale : 1;
 			poseStack.scale(g, g, g);
 			this.setupRotations(renderState, poseStack);
-			poseStack.scale(-1, -1, 1);
 			this.scale(renderState, poseStack);
-			poseStack.translate(0.0F, -1.501F, 0.0F);
 			this.renderLayers(renderState, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true), poseStack, bufferSource, packedLight);
 		poseStack.popPose();
 		this.renderExtras(renderState, poseStack, bufferSource, packedLight);
+	}
+	
+	public static boolean isEntityUpsideDown(LivingEntity entity) {
+		if (entity instanceof Player || entity.hasCustomName()) {
+			String string = ChatFormatting.stripFormatting(entity.getName().getString());
+			if ("Dinnerbone".equals(string) || "Grumm".equals(string)) {
+				return !(entity instanceof Player) || ((Player)entity).isModelPartShown(PlayerModelPart.CAPE);
+			}
+		}
+		
+		return false;
+	}
+	protected static float solveBodyRot(LivingEntity entity, float yHeadRot, float partialTick) {
+		Entity f = entity.getVehicle();
+		
+		if (f instanceof LivingEntity livingEntity) {
+			float r = Mth.rotLerp(partialTick, livingEntity.yBodyRotO, livingEntity.yBodyRot);
+			float g = 85.0F;
+			float h = Mth.clamp(Mth.wrapDegrees(yHeadRot - r), -85.0F, 85.0F);
+			r = yHeadRot - h;
+			if (Math.abs(h) > 50.0F) r += h * 0.2F;
+			
+			return r;
+		} else {
+			return Mth.rotLerp(partialTick, entity.yBodyRotO, entity.yBodyRot);
+		}
+	}
+	
+	@Override
+	public void extractRenderState(E entity, S reusedState, float partialTick) {
+		super.extractRenderState(entity, reusedState, partialTick);
+		if(entity instanceof LivingEntity le && reusedState instanceof LivingEntityRenderState les) {
+			float g = Mth.rotLerp(partialTick, le.yHeadRotO, le.yHeadRot);
+			les.bodyRot = solveBodyRot(le, g, partialTick);
+			les.yRot = Mth.wrapDegrees(g - les.bodyRot);
+			les.xRot = le.getXRot(partialTick);
+			les.customName = le.getCustomName();
+			les.isUpsideDown = isEntityUpsideDown(le);
+			if (les.isUpsideDown) {
+				les.xRot *= -1.0F;
+				les.yRot *= -1.0F;
+			}
+			
+			if (!le.isPassenger() && le.isAlive()) {
+				les.walkAnimationPos = le.walkAnimation.position(partialTick);
+				les.walkAnimationSpeed = le.walkAnimation.speed(partialTick);
+			} else {
+				les.walkAnimationPos = 0.0F;
+				les.walkAnimationSpeed = 0.0F;
+			}
+			
+			if (le.getVehicle() instanceof LivingEntity livingEntity2) les.wornHeadAnimationPos = livingEntity2.walkAnimation.position(partialTick);
+			else les.wornHeadAnimationPos = les.walkAnimationPos;
+			
+			les.scale = le.getScale();
+			les.ageScale = le.getAgeScale();
+			les.pose = le.getPose();
+			les.bedOrientation = le.getBedOrientation();
+			if (les.bedOrientation != null) {
+				les.eyeHeight = le.getEyeHeight(Pose.STANDING);
+			}
+
+label48: {
+				les.isFullyFrozen = le.isFullyFrozen();
+				les.isBaby = le.isBaby();
+				les.isInWater = le.isInWater();
+				les.isAutoSpinAttack = le.isAutoSpinAttack();
+				les.hasRedOverlay = le.hurtTime > 0 || le.deathTime > 0;
+				ItemStack itemStack = le.getItemBySlot(EquipmentSlot.HEAD);
+				Item var8 = itemStack.getItem();
+				if (var8 instanceof BlockItem blockItem) {
+					Block var12 = blockItem.getBlock();
+					
+					if (var12 instanceof AbstractSkullBlock abstractSkullBlock) {
+						les.wornHeadType = abstractSkullBlock.getType();
+						les.wornHeadProfile = itemStack.get(DataComponents.PROFILE);
+						les.headItem.clear();
+						break label48;
+					}
+				}
+				
+				les.wornHeadType = null;
+				les.wornHeadProfile = null;
+				if (!HumanoidArmorLayer.shouldRender(itemStack, EquipmentSlot.HEAD)) {
+					this.itemModelResolver.updateForLiving(les.headItem, itemStack, ItemDisplayContext.HEAD, false, le);
+				} else {
+					les.headItem.clear();
+				}
+			}
+
+			
+			les.deathTime = le.deathTime > 0 ? le.deathTime + partialTick : 0.0F;
+			Minecraft minecraft = Minecraft.getInstance();
+			les.isInvisibleToPlayer = les.isInvisible && le.isInvisibleTo(minecraft.player);
+			les.appearsGlowing = minecraft.shouldEntityAppearGlowing(le);
+		}
 	}
 	
 	public void renderLayers(S entity, float tickDelta, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
