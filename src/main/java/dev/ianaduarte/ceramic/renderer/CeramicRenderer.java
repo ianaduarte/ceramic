@@ -3,6 +3,7 @@ package dev.ianaduarte.ceramic.renderer;
 import com.google.common.collect.Lists;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import dev.ianaduarte.ceramic.layers.CeramicLayerParent;
 import dev.ianaduarte.ceramic.layers.CeramicRenderLayer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -24,8 +25,8 @@ import net.minecraft.world.phys.AABB;
 
 import java.util.List;
 
-public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderState> extends EntityRenderer<E, S> {
-	protected final List<CeramicRenderLayer<S, CeramicRenderer<E, S>>> renderLayers;
+public abstract class CeramicRenderer<E extends Entity, S extends EntityRenderState> extends EntityRenderer<E, S> implements CeramicLayerParent<S> {
+	protected final List<CeramicRenderLayer<S>> renderLayers;
 	
 	protected CeramicRenderer(EntityRendererProvider.Context context) {
 		super(context);

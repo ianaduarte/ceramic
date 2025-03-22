@@ -8,6 +8,7 @@ group = project.maven_group
 base { archivesName = project.archives_base_name }
 
 repositories {
+	mavenCentral()
 	maven { name = 'ParchmentMC'; url = 'https://maven.parchmentmc.org' }
 	maven { url = "https://jitpack.io" }
 }
@@ -50,4 +51,17 @@ java {
 
 jar {
 	from("LICENSE") { rename { "${it}_${project.base.archivesName.get()}" }}
+}
+publishing {
+	repositories {
+		maven {
+			name = "CeramicLib"
+			url = "https://maven.pkg.github.com/ianaduarte/ceramic"
+			credentials.username = System.getenv("GITHUB_USERNAME")
+			credentials.password = System.getenv("GITHUB_TOKEN")
+		}
+	}
+	publications {
+		gpr(MavenPublication) { from(components.java) }
+	}
 }

@@ -17,12 +17,12 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.function.Function;
 
-public abstract class CeramicRenderLayer<S extends EntityRenderState, R extends CeramicRenderer<?, S>> {
+public abstract class CeramicRenderLayer<S extends EntityRenderState> {
 	public boolean active;
-	protected final R renderer;
+	protected final CeramicLayerParent<S> renderer;
 	protected final Function<ResourceLocation, RenderType> renderType;
 	
-	protected CeramicRenderLayer(R renderer, Function<ResourceLocation, RenderType> renderType) {
+	protected CeramicRenderLayer(CeramicLayerParent<S> renderer, Function<ResourceLocation, RenderType> renderType) {
 		this.renderer = renderer;
 		this.renderType = renderType;
 		this.active = true;
