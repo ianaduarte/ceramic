@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.function.Function;
 
-public abstract class CeramicModelLayer<S extends EntityRenderState, R extends CeramicRenderer<?, S>> extends CeramicRenderLayer<S, R>  {
+public abstract class CeramicModelLayer<S extends EntityRenderState, R extends CeramicRenderer<?, S>> extends CeramicRenderLayer<S>  {
 	protected CeramicModel model;
 	
 	protected CeramicModelLayer(R renderer, Function<ResourceLocation, RenderType> renderType, CeramicModel model) {
